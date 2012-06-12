@@ -1,16 +1,47 @@
+# encoding: utf-8
+#
+# Copyright (C) 2012 Chris Jerdonek. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice,
+#   this list of conditions and the following disclaimer.
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+# * The names of the copyright holders may not be used to endorse or promote
+#   products derived from this software without specific prior written
+#   permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
 import csv
 import os
 import urllib
 
 from bs4 import BeautifulSoup
 
+
 URL_FORMAT = "http://vote.sos.ca.gov/returns/%s/district/%s/"
+WEB_DATA_DIR = 'web_data'
 
 ELECTION_TYPES = [
     ("us-congress", range(1, 54)),
     ("state-assembly", range(1, 81)),
     ("state-senate", range(1, 40, 2)),
 ]
+
 
 class Candidate(object):
 
@@ -22,8 +53,23 @@ class Candidate(object):
     def __str__(self):
         return "%s (%s, %s%%)" % (self.name, self.party, self.percent)
 
-def make_path(label, _id):
-    return os.path.join(label, "%s.html" % _id)
+
+def make_dir(dir_path):
+    """
+    Create a directory if it doesn't already exist.
+
+    """
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+
+
+def get_data_dir(label):
+    return os.path.join(WEB_DATA_DIR, label)
+
+
+def get_data_path(label, _id):
+    data_dir = get_data_dir(label)
+    return os.path.join(data_dir, "%s.html" % _id)
 
 
 def make_url(label, _id):
@@ -38,7 +84,7 @@ def download_url(url, path):
         f.write(b)
 
 
-def download_urls(label, ids, url_format):
+def download_data(label, ids):
     """
     Arguments:
 
@@ -46,27 +92,13 @@ def download_urls(label, ids, url_format):
         is an id in ids.
 
     """
-    target_dir = label
-
-    if not os.path.exists(target_dir):
-        os.mkdir(target_dir)
+    data_dir = get_data_dir(label)
+    make_dir(data_dir)
 
     for _id in ids:
-        url = url_format % (label, _id)
-        path = make_path(label, _id)
+        url = make_url(label, _id)
+        path = get_data_path(label, _id)
         download_url(url, path)
-
-
-def download_all():
-    congress_ids = range(1, 54)
-    state_assembly_ids = range(1, 81)
-    state_senate_ids = range(1, 40, 2)
-
-    url_format = "http://vote.sos.ca.gov/returns/%s/district/%s/"
-
-    download_urls("us-congress", congress_ids, url_format)
-    download_urls("state-assembly", state_assembly_ids, url_format)
-    download_urls("state-senate", state_senate_ids, url_format)
 
 
 def parse_title(soup):
@@ -117,7 +149,7 @@ def parse_candidates(soup):
 
 
 def parse(label, _id):
-    path = make_path(label, _id)
+    path = get_data_path(label, _id)
 
     with open(path) as f:
         soup = BeautifulSoup(f)
@@ -144,9 +176,17 @@ def create_row(label, _id):
     url = make_url(label, _id)
     candidate_count = len(candidates)
     total = sum([candidate.percent for candidate in candidates])
+
+    if candidate_count > 3:
+        exhausted = sum([candidate.percent for candidate in candidates[3:]])
+    else:
+        exhausted = 0
+
     miss = candidates[1].percent - candidates[2].percent if candidate_count > 2 else 100
 
-    row = [name, url, candidate_count, total, miss]
+    uncertain = 1 if exhausted > miss else 0
+
+    row = [name, url, candidate_count, total, exhausted, miss, uncertain]
 
 
     for candidate in candidates:
@@ -156,11 +196,14 @@ def create_row(label, _id):
 
 
 def main():
+    make_dir('web_data')
+
     rows = []
-    rows.append(['name', 'url', 'candidates', 'total', 'miss', 'percents'])
+    rows.append(['name', 'url', 'candidates', 'total', 'exhausted', 'miss', 'uncertain', 'percents'])
 
     for election_type in ELECTION_TYPES:
         label, ids = election_type
+        download_data(label, ids)
         for _id in ids:
             row = create_row(label, _id)
             rows.append(row)
