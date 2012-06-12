@@ -166,7 +166,7 @@ def write_csv(path, rows):
 
     """
     with open(path, "wb") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, lineterminator='\n')
         for row in rows:
             writer.writerow(row)
 
@@ -195,15 +195,18 @@ def create_row(label, _id):
     return row
 
 
-def main():
-    make_dir('web_data')
+def main(should_download=False):
+    make_dir(WEB_DATA_DIR)
 
     rows = []
-    rows.append(['name', 'url', 'candidates', 'total', 'exhausted', 'miss', 'uncertain', 'percents'])
+    rows.append(['name', 'url', 'candidates', 'total', 'exhausted', 'miss', 'uncertain', 'percents*'])
 
     for election_type in ELECTION_TYPES:
         label, ids = election_type
-        download_data(label, ids)
+
+        if should_download:
+            download_data(label, ids)
+
         for _id in ids:
             row = create_row(label, _id)
             rows.append(row)

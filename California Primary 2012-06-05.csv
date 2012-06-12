@@ -1,4 +1,4 @@
-name,url,candidates,total,exhausted,miss,uncertain,percents
+name,url,candidates,total,exhausted,miss,uncertain,percents*
 U.S. Congress District 1,http://vote.sos.ca.gov/returns/us-congress/district/1/,8,100.0,22.6,10.5,1,37.9,25.0,14.5,5.9,5.5,5.1,3.3,2.8
 U.S. Congress District 2,http://vote.sos.ca.gov/returns/us-congress/district/2/,12,100.0,32.9,1.2,1,37.7,15.3,14.1,9.9,8.4,6.0,2.2,1.8,1.5,1.4,1.0,0.7
 U.S. Congress District 3,http://vote.sos.ca.gov/returns/us-congress/district/3/,5,100.0,6.7,9.4,0,52.3,25.2,15.8,4.5,2.2
