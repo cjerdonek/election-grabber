@@ -34,7 +34,7 @@ from bs4 import BeautifulSoup
 
 
 URL_FORMAT = "http://vote.sos.ca.gov/returns/%s/district/%s/"
-WEB_DATA_DIR = 'web_data'
+WEB_DATA_DIR = 'web_data2'
 
 ELECTION_TYPES = [
     ("us-congress", range(1, 54)),
@@ -160,17 +160,6 @@ def parse(label, _id):
     return title, candidates
 
 
-def write_csv(path, rows):
-    """
-    election name, url, candidate count, total percent, percents
-
-    """
-    with open(path, "wb") as f:
-        writer = csv.writer(f, lineterminator='\n')
-        for row in rows:
-            writer.writerow(row)
-
-
 def create_row(label, _id):
     name, candidates = parse(label, _id)
     url = make_url(label, _id)
@@ -186,8 +175,17 @@ def create_row(label, _id):
 
     uncertain = 1 if exhausted > miss else 0
 
-    row = [name, url, candidate_count, total, exhausted, miss, uncertain]
+    def get_party(i, candidates):
+        try:
+            candidate = candidates[i]
+        except:
+            return ""
 
+        return candidate.party
+
+    parties = [get_party(i, candidates) for i in range(4)]
+
+    row = [name, url, candidate_count] + parties + [total, exhausted, miss, uncertain]
 
     for candidate in candidates:
         row.append(candidate.percent)
@@ -195,11 +193,19 @@ def create_row(label, _id):
     return row
 
 
-def main(should_download=False):
+def write_csv(path, rows):
+    with open(path, "wb") as f:
+        writer = csv.writer(f, lineterminator='\n')
+        for row in rows:
+            writer.writerow(row)
+
+
+def main():
+    should_download=False
     make_dir(WEB_DATA_DIR)
 
     rows = []
-    rows.append(['name', 'url', 'candidates', 'total', 'exhausted', 'miss', 'uncertain', 'percents*'])
+    rows.append(['name', 'url', 'count', 'party1', 'party2', 'party3', 'party4', 'total', 'exhausted', 'miss', 'uncertain', 'percents*'])
 
     for election_type in ELECTION_TYPES:
         label, ids = election_type
@@ -211,7 +217,7 @@ def main(should_download=False):
             row = create_row(label, _id)
             rows.append(row)
 
-    write_csv("California Primary 2012-06-05.csv", rows)
+    write_csv("California Primary 2012-06-05-v2.csv", rows)
 
 
 if __name__=='__main__':
