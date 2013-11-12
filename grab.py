@@ -42,6 +42,9 @@ ELECTION_TYPES = [
     ("state-senate", range(1, 40, 2)),
 ]
 
+PARTY_REP = 'Rep'
+PARTY_DEM = 'Dem'
+PARTIES_OTHER = ['NPP', 'Lib', 'Grn', 'P&a']
 
 class Candidate(object):
 
@@ -53,6 +56,8 @@ class Candidate(object):
     def __str__(self):
         return "%s (%s, %s%%)" % (self.name, self.party, self.percent)
 
+    def __repr__(self):
+        return self.__str__()
 
 def make_dir(dir_path):
     """
@@ -161,10 +166,10 @@ def parse(label, _id):
 
 
 def create_row(label, _id):
+
     name, candidates = parse(label, _id)
     url = make_url(label, _id)
     candidate_count = len(candidates)
-    total = sum([candidate.percent for candidate in candidates])
 
     if candidate_count > 3:
         exhausted = sum([candidate.percent for candidate in candidates[3:]])
@@ -185,7 +190,21 @@ def create_row(label, _id):
 
     parties = [get_party(i, candidates) for i in range(4)]
 
-    row = [name, url, candidate_count] + parties + [total, exhausted, miss, uncertain]
+    totals = [0, 0, 0]  # Dem, Rep, Other
+    for candidate in candidates:
+        party = candidate.party
+        if party == PARTY_DEM:
+            i = 0
+        elif party == PARTY_REP:
+            i = 1
+        elif party in PARTIES_OTHER:
+            i = 2
+        else:
+            raise Exception("Invalid party: %s" % party)
+        totals[i] += candidate.percent
+    total = sum(totals)
+
+    row = [name, url, candidate_count] + parties + totals + [total, exhausted, miss, uncertain]
 
     for candidate in candidates:
         row.append(candidate.percent)
@@ -205,9 +224,10 @@ def main():
     make_dir(WEB_DATA_DIR)
 
     rows = []
-    rows.append(['name', 'url', 'count', 'party1', 'party2', 'party3', 'party4', 'total', 'exhausted', 'miss', 'uncertain', 'percents*'])
+    rows.append(['name', 'url', 'count', 'party1', 'party2', 'party3', 'party4', 'tot_dem', 'tot_rep', 'tot_oth', 'total', 'exhausted', 'miss', 'uncertain', 'percents*'])
 
     for election_type in ELECTION_TYPES:
+        print "Processing: %s" % election_type[0]
         label, ids = election_type
 
         if should_download:
@@ -217,7 +237,7 @@ def main():
             row = create_row(label, _id)
             rows.append(row)
 
-    write_csv("California Primary 2012-06-05-v2.csv", rows)
+    write_csv("California Primary 2012-06-05-v3.csv", rows)
 
 
 if __name__=='__main__':
